@@ -7,11 +7,14 @@
     <meta name="description" content="Drag-and-drop background removal for macOS, powered by Apple's Vision framework — fully on-device, no uploads." />
     <style>
       :root {
-        --accent: #6d8bff;
-        --accent-2: #a162ec;
-        --ink: #14151a;
-        --dim: #5b5c66;
-        --card: #ffffff;
+        --accent: #7c96ff;
+        --accent-2: #b184ff;
+        --ink: #e9eaf0;
+        --dim: #9a9ba6;
+        --card: #1b1c22;
+        --bg: #0f1014;
+        --border: #2a2b33;
+        --code-bg: #23242d;
       }
       * { box-sizing: border-box; }
       html { scroll-behavior: smooth; }
@@ -19,7 +22,7 @@
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
         color: var(--ink);
-        background: #f4f5f9;
+        background: var(--bg);
         -webkit-font-smoothing: antialiased;
         line-height: 1.5;
       }
@@ -57,34 +60,34 @@
         display: block;
         transform: translateY(20px);
       }
-      .shot img { width: 100%; height: auto; border-radius: 14px; box-shadow: 0 30px 70px rgba(30,20,80,0.28); }
+      .shot img { width: 100%; height: auto; border-radius: 14px; box-shadow: 0 30px 70px rgba(0,0,0,0.55); }
       section.wrap { max-width: 760px; margin: 0 auto; padding: 56px 24px; }
       .features { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; }
-      .features li { padding-left: 26px; position: relative; color: #2c2d36; }
+      .features li { padding-left: 26px; position: relative; color: var(--ink); }
       .features li::before { content: "✓"; position: absolute; left: 0; color: var(--accent-2); font-weight: 800; }
       h2 { font-size: 26px; margin: 0 0 20px; letter-spacing: -0.3px; }
       .open-card {
         background: var(--card);
-        border: 1px solid #e6e7ee;
+        border: 1px solid var(--border);
         border-radius: 16px;
         padding: 26px 28px;
-        box-shadow: 0 4px 18px rgba(20,20,40,0.05);
+        box-shadow: 0 4px 18px rgba(0,0,0,0.35);
       }
       .open-card.flash { animation: flash 1.6s ease; }
       @keyframes flash {
-        0%, 100% { box-shadow: 0 4px 18px rgba(20,20,40,0.05); }
-        20% { box-shadow: 0 0 0 4px rgba(109,139,255,0.45), 0 4px 18px rgba(20,20,40,0.05); }
+        0%, 100% { box-shadow: 0 4px 18px rgba(0,0,0,0.35); }
+        20% { box-shadow: 0 0 0 4px rgba(124,150,255,0.55), 0 4px 18px rgba(0,0,0,0.35); }
       }
       ol.steps { margin: 0; padding-left: 22px; }
       ol.steps li { margin-bottom: 14px; }
       code {
-        background: #f0f1f6;
+        background: var(--code-bg);
         padding: 2px 7px;
         border-radius: 6px;
         font-family: "SF Mono", ui-monospace, Menlo, monospace;
         font-size: 13.5px;
       }
-      pre { background: #14151a; color: #f4f5f9; padding: 14px 16px; border-radius: 10px; overflow-x: auto; }
+      pre { background: #000; color: #e9eaf0; padding: 14px 16px; border-radius: 10px; overflow-x: auto; border: 1px solid var(--border); }
       pre code { background: none; color: inherit; padding: 0; }
       footer { text-align: center; padding: 30px; color: var(--dim); font-size: 13px; }
       footer a { color: var(--accent-2); text-decoration: none; }
