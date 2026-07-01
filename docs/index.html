@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cutout — background removal for macOS</title>
+    <meta name="description" content="Drag-and-drop background removal for macOS, powered by Apple's Vision framework — fully on-device, no uploads." />
+    <style>
+      :root {
+        --accent: #6d8bff;
+        --accent-2: #a162ec;
+        --ink: #14151a;
+        --dim: #5b5c66;
+        --card: #ffffff;
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+        color: var(--ink);
+        background: #f4f5f9;
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.5;
+      }
+      .hero {
+        text-align: center;
+        padding: 72px 20px 40px;
+        background: linear-gradient(150deg, #6e8bff 0%, #8b74f2 45%, #a162ec 100%);
+        color: #fff;
+      }
+      .logo {
+        width: 84px; height: 84px;
+        border-radius: 20px;
+        display: block; margin: 0 auto 22px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      }
+      h1 { font-size: 44px; margin: 0 0 12px; letter-spacing: -0.5px; font-weight: 800; }
+      .tagline { font-size: 19px; max-width: 620px; margin: 0 auto 30px; opacity: 0.95; }
+      .btn {
+        display: inline-block;
+        background: #fff;
+        color: #4a2fb0;
+        font-size: 17px; font-weight: 700;
+        padding: 15px 34px;
+        border-radius: 13px;
+        text-decoration: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+        transition: transform 0.08s ease, box-shadow 0.12s ease;
+      }
+      .btn:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(0,0,0,0.28); }
+      .req { display: block; margin-top: 14px; font-size: 13px; opacity: 0.85; }
+      .shot {
+        max-width: 1000px;
+        width: calc(100% - 40px);
+        margin: -12px auto 0;
+        display: block;
+        transform: translateY(20px);
+      }
+      .shot img { width: 100%; height: auto; border-radius: 14px; box-shadow: 0 30px 70px rgba(30,20,80,0.28); }
+      section.wrap { max-width: 760px; margin: 0 auto; padding: 56px 24px; }
+      .features { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; }
+      .features li { padding-left: 26px; position: relative; color: #2c2d36; }
+      .features li::before { content: "✓"; position: absolute; left: 0; color: var(--accent-2); font-weight: 800; }
+      h2 { font-size: 26px; margin: 0 0 20px; letter-spacing: -0.3px; }
+      .open-card {
+        background: var(--card);
+        border: 1px solid #e6e7ee;
+        border-radius: 16px;
+        padding: 26px 28px;
+        box-shadow: 0 4px 18px rgba(20,20,40,0.05);
+      }
+      .open-card.flash { animation: flash 1.6s ease; }
+      @keyframes flash {
+        0%, 100% { box-shadow: 0 4px 18px rgba(20,20,40,0.05); }
+        20% { box-shadow: 0 0 0 4px rgba(109,139,255,0.45), 0 4px 18px rgba(20,20,40,0.05); }
+      }
+      ol.steps { margin: 0; padding-left: 22px; }
+      ol.steps li { margin-bottom: 14px; }
+      code {
+        background: #f0f1f6;
+        padding: 2px 7px;
+        border-radius: 6px;
+        font-family: "SF Mono", ui-monospace, Menlo, monospace;
+        font-size: 13.5px;
+      }
+      pre { background: #14151a; color: #f4f5f9; padding: 14px 16px; border-radius: 10px; overflow-x: auto; }
+      pre code { background: none; color: inherit; padding: 0; }
+      footer { text-align: center; padding: 30px; color: var(--dim); font-size: 13px; }
+      footer a { color: var(--accent-2); text-decoration: none; }
+      @media (max-width: 620px) {
+        h1 { font-size: 34px; }
+        .features { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="hero">
+      <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#6EA8FF"/><stop offset="1" stop-color="#9B5CF0"/>
+          </linearGradient>
+        </defs>
+        <rect x="4" y="4" width="92" height="92" rx="22" fill="url(#lg)"/>
+        <rect x="27" y="27" width="46" height="49" rx="8" fill="none" stroke="#fff" stroke-opacity="0.9" stroke-width="3.2" stroke-dasharray="7 5"/>
+        <circle cx="50" cy="44" r="12" fill="#fff"/>
+        <path d="M32 74c2-11 9-16 18-16s16 5 18 16Z" fill="#fff"/>
+      </svg>
+      <h1>Cutout</h1>
+      <p class="tagline">Drag-and-drop background removal for macOS, powered by Apple's Vision framework — fully on-device, no uploads.</p>
+      <a class="btn" id="download" href="https://github.com/Alyetama/Cutout/releases/latest/download/Cutout.dmg">⬇︎ Download for macOS</a>
+      <span class="req">Free &amp; open-source · Requires macOS 14 or later</span>
+      <a class="shot" href="https://github.com/Alyetama/Cutout"><img src="mockup.png" alt="Cutout app screenshot" /></a>
+    </header>
+
+    <section class="wrap">
+      <h2>Features</h2>
+      <ul class="features">
+        <li>On-device Apple Vision — nothing uploaded</li>
+        <li>Drag &amp; drop, one image or a whole batch</li>
+        <li>Before / after comparison slider</li>
+        <li>Transparent PNG output</li>
+        <li>JPEG, PNG, HEIC, TIFF, WebP &amp; more</li>
+        <li>Touch-up brush to refine the mask</li>
+      </ul>
+    </section>
+
+    <section class="wrap" id="open">
+      <h2>How to open the app</h2>
+      <div class="open-card" id="open-card">
+        <p>Cutout is open-source but not signed with a paid Apple Developer ID, so macOS
+          blocks it on first launch. Any one of these opens it (you only need to do this once):</p>
+        <ol class="steps">
+          <li><strong>Right-click</strong> (or Control-click) <strong>Cutout</strong> in your Applications folder → <strong>Open</strong> → <strong>Open</strong>.</li>
+          <li>If that's blocked on newer macOS: open <strong>System Settings → Privacy &amp; Security</strong>, scroll down, and click <strong>"Open Anyway"</strong>.</li>
+          <li>Or, from Terminal:
+            <pre><code>xattr -dr com.apple.quarantine /Applications/Cutout.app</code></pre>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <footer>
+      <a href="https://github.com/Alyetama/Cutout">View on GitHub</a> · MIT License © 2026 Alyetama
+    </footer>
+
+    <script>
+      // Clicking Download also reveals the "How to open the app" section.
+      document.getElementById("download").addEventListener("click", function () {
+        var card = document.getElementById("open-card");
+        setTimeout(function () {
+          document.getElementById("open").scrollIntoView({ behavior: "smooth", block: "center" });
+          card.classList.remove("flash");
+          void card.offsetWidth; // restart animation
+          card.classList.add("flash");
+        }, 400);
+      });
+    </script>
+  </body>
+</html>

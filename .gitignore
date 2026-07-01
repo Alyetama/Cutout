@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Frontend build output
+dist/
+
+# Rust / Tauri build output
+src-tauri/target/
+src-tauri/gen/
+
+# Compiled Swift helper (rebuilt by helper/build-helper.sh)
+src-tauri/binaries/
+
+# Build / distribution artifacts (release assets only — never committed)
+build/
+dist/
+DerivedData/
+*.app
+*.dmg
+
+# macOS cruft
+.DS_Store
+*.xcuserstate
+
+# Claude Code local config
+.claude/
