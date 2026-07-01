@@ -181,6 +181,9 @@ export function Editor({ item, onClose, onSaved }: Props) {
     const prev = undoStack.current.pop();
     if (!prev) return;
     workRef.current!.getContext("2d")!.putImageData(prev, 0, 0);
+    // The first snapshot is the pristine result; an empty stack means we're
+    // back to it, so there's nothing left to save.
+    setDirty(undoStack.current.length > 0);
   }
   function reset() {
     if (!initialRef.current) return;

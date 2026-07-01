@@ -1,9 +1,11 @@
 // Prevents an extra console window on Windows in release. Harmless on macOS.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine;
@@ -106,23 +108,56 @@ fn unique_temp(ext: &str) -> Result<PathBuf, String> {
     Ok(scratch_dir()?.join(format!("tmp-{t}-{n}.{ext}")))
 }
 
-/// Default output path: alongside the original as `<stem>-nobg.png`, unless an
-/// explicit destination directory is given.
-fn output_path_for(input: &str, output_dir: Option<&str>) -> Result<PathBuf, String> {
-    let input = Path::new(input);
-    let stem = input
+/// Output paths claimed this session, mapped to the input that owns them, so two
+/// different inputs that share a filename stem never overwrite each other.
+static CLAIMED_OUTPUTS: OnceLock<Mutex<HashMap<PathBuf, String>>> = OnceLock::new();
+
+fn claimed_outputs() -> &'static Mutex<HashMap<PathBuf, String>> {
+    CLAIMED_OUTPUTS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Reserve a unique output path: alongside the original as `<stem>-nobg.png`
+/// (or `<stem>-nobg N.png` if that name is already taken by a *different* input
+/// this session), unless an explicit destination directory is given.
+///
+/// Reprocessing the same input reuses — and overwrites — its own output; only
+/// distinct inputs get disambiguated, which prevents silent data loss when two
+/// files share a stem (e.g. `a/photo.jpg` and `b/photo.jpg` → one folder).
+fn reserve_output_path(input: &str, output_dir: Option<&str>) -> Result<PathBuf, String> {
+    let input_path = Path::new(input);
+    let stem = input_path
         .file_stem()
         .and_then(|s| s.to_str())
         .ok_or_else(|| "Invalid input filename.".to_string())?;
-    let file_name = format!("{stem}-nobg.png");
     let dir = match output_dir {
         Some(d) => PathBuf::from(d),
-        None => input
+        None => input_path
             .parent()
             .map(|p| p.to_path_buf())
             .unwrap_or_else(|| PathBuf::from(".")),
     };
-    Ok(dir.join(file_name))
+
+    let mut claimed = claimed_outputs()
+        .lock()
+        .map_err(|_| "Internal state error.".to_string())?;
+    let mut n = 1u32;
+    loop {
+        let name = if n == 1 {
+            format!("{stem}-nobg.png")
+        } else {
+            format!("{stem}-nobg {n}.png")
+        };
+        let candidate = dir.join(name);
+        match claimed.get(&candidate) {
+            // Already taken by a different input — try the next suffix.
+            Some(owner) if owner != input => n += 1,
+            // Free, or already ours (reprocessing) — claim and use it.
+            _ => {
+                claimed.insert(candidate.clone(), input.to_string());
+                return Ok(candidate);
+            }
+        }
+    }
 }
 
 fn read_as_data_url(path: &Path) -> Result<String, String> {
@@ -144,7 +179,7 @@ async fn process_image(
     // Everything below is blocking (subprocess + file IO); keep it off the
     // async runtime's worker so a big batch never freezes the UI.
     tauri::async_runtime::spawn_blocking(move || {
-        let saved = output_path_for(&input_path, output_dir.as_deref())?;
+        let saved = reserve_output_path(&input_path, output_dir.as_deref())?;
         if let Some(parent) = saved.parent() {
             std::fs::create_dir_all(parent)
                 .map_err(|e| format!("Could not create output folder: {e}"))?;
@@ -176,15 +211,18 @@ async fn process_image(
             ],
         )?;
 
-        let result = ProcessResult {
-            input_path,
-            saved_path: saved_str,
-            before_preview: read_as_data_url(&before_small)?,
-            after_preview: read_as_data_url(&after_small)?,
-        };
+        // Read both previews, then clean up the temp files regardless of outcome.
+        let before_res = read_as_data_url(&before_small);
+        let after_res = read_as_data_url(&after_small);
         let _ = std::fs::remove_file(&before_small);
         let _ = std::fs::remove_file(&after_small);
-        Ok(result)
+
+        Ok(ProcessResult {
+            input_path,
+            saved_path: saved_str,
+            before_preview: before_res?,
+            after_preview: after_res?,
+        })
     })
     .await
     .map_err(|e| format!("Processing task failed: {e}"))?
@@ -253,4 +291,28 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Cutout");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn distinct_inputs_sharing_a_stem_get_distinct_outputs() {
+        // Two different files named photo.jpg going to one folder must NOT
+        // clobber each other.
+        let a = reserve_output_path("/x/a/photo.jpg", Some("/out")).unwrap();
+        let b = reserve_output_path("/x/b/photo.jpg", Some("/out")).unwrap();
+        assert_eq!(a, PathBuf::from("/out/photo-nobg.png"));
+        assert_eq!(b, PathBuf::from("/out/photo-nobg 2.png"));
+        assert_ne!(a, b);
+
+        // Reprocessing the same input reuses (overwrites) its own output.
+        let a_again = reserve_output_path("/x/a/photo.jpg", Some("/out")).unwrap();
+        assert_eq!(a, a_again);
+
+        // Beside-original mode writes into each input's own folder — no clash.
+        let c = reserve_output_path("/y/a/pic.png", None).unwrap();
+        assert_eq!(c, PathBuf::from("/y/a/pic-nobg.png"));
+    }
 }
