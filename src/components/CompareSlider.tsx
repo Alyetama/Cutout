@@ -9,7 +9,8 @@ interface Props {
 /** A draggable before/after comparison. The "after" (cut-out, on a
  *  checkerboard) is the base; the original is revealed from the left edge. */
 export function CompareSlider({ before, after, alt }: Props) {
-  const [pos, setPos] = useState(50);
+  // Start fully showing the cut-out (original clipped away); drag right to reveal it.
+  const [pos, setPos] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
