@@ -1,37 +1,53 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
   basename,
   isImagePath,
+  picturesDir,
   processImage,
   revealInFinder,
-  saveAs,
-  stem,
+  saveToFolder,
   type QueueItem,
 } from "./lib/api";
 import { QueueItemCard } from "./components/QueueItemCard";
 import { Editor } from "./components/Editor";
 
 const CONCURRENCY = 2;
+const SAVE_FOLDER_KEY = "cutout.saveFolder";
 
 export default function App() {
   const [items, setItems] = useState<QueueItem[]>([]);
-  const [outputFolder, setOutputFolder] = useState<string | null>(null);
+  const [saveFolder, setSaveFolder] = useState<string | null>(null);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [showSettings, setShowSettings] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [editing, setEditing] = useState<QueueItem | null>(null);
 
   const itemsRef = useRef<QueueItem[]>([]);
   const pendingRef = useRef<{ id: string; inputPath: string }[]>([]);
   const activeRef = useRef(0);
-  const outputRef = useRef<string | null>(null);
+  const saveFolderRef = useRef<string | null>(null);
 
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
   useEffect(() => {
-    outputRef.current = outputFolder;
-  }, [outputFolder]);
+    saveFolderRef.current = saveFolder;
+    if (saveFolder) localStorage.setItem(SAVE_FOLDER_KEY, saveFolder);
+  }, [saveFolder]);
+
+  // Resolve the default save folder once: stored choice, else the Pictures folder.
+  useEffect(() => {
+    const stored = localStorage.getItem(SAVE_FOLDER_KEY);
+    if (stored) {
+      setSaveFolder(stored);
+      return;
+    }
+    picturesDir()
+      .then(setSaveFolder)
+      .catch(() => setSaveFolder(null));
+  }, []);
 
   const updateItem = useCallback((id: string, patch: Partial<QueueItem>) => {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -41,10 +57,10 @@ export default function App() {
     async (task: { id: string; inputPath: string }) => {
       updateItem(task.id, { status: "processing", error: undefined });
       try {
-        const res = await processImage(task.inputPath, outputRef.current);
+        const res = await processImage(task.inputPath);
         updateItem(task.id, {
           status: "done",
-          savedPath: res.saved_path,
+          resultPath: res.result_path,
           before: res.before_preview,
           after: res.after_preview,
         });
@@ -78,12 +94,7 @@ export default function App() {
       for (const p of imgs) {
         if (existing.has(p)) continue;
         existing.add(p);
-        fresh.push({
-          id: crypto.randomUUID(),
-          inputPath: p,
-          name: basename(p),
-          status: "queued",
-        });
+        fresh.push({ id: crypto.randomUUID(), inputPath: p, name: basename(p), status: "queued" });
       }
       if (fresh.length === 0) return;
       setItems((prev) => [...prev, ...fresh]);
@@ -98,14 +109,11 @@ export default function App() {
     const wv = getCurrentWebview();
     const unlisten = wv.onDragDropEvent((event) => {
       const p = event.payload;
-      if (p.type === "enter" || p.type === "over") {
-        setDragActive(true);
-      } else if (p.type === "drop") {
+      if (p.type === "enter" || p.type === "over") setDragActive(true);
+      else if (p.type === "drop") {
         setDragActive(false);
         addPaths(p.paths);
-      } else {
-        setDragActive(false);
-      }
+      } else setDragActive(false);
     });
     return () => {
       void unlisten.then((f) => f());
@@ -127,24 +135,42 @@ export default function App() {
     addPaths(Array.isArray(picked) ? picked : [picked]);
   }, [addPaths]);
 
-  const chooseFolder = useCallback(async () => {
+  const changeFolder = useCallback(async () => {
     const dir = await openDialog({ directory: true, multiple: false });
-    if (typeof dir === "string") setOutputFolder(dir);
+    if (typeof dir === "string") setSaveFolder(dir);
   }, []);
 
-  const onSaveAs = useCallback(async (item: QueueItem) => {
-    if (!item.savedPath) return;
-    const dest = await saveDialog({
-      defaultPath: `${stem(item.name)}-nobg.png`,
-      filters: [{ name: "PNG image", extensions: ["png"] }],
-    });
-    if (!dest) return;
+  const resetToPictures = useCallback(async () => {
     try {
-      await saveAs(item.savedPath, dest);
-    } catch (e) {
-      alert(`Could not save: ${e instanceof Error ? e.message : e}`);
+      setSaveFolder(await picturesDir());
+    } catch {
+      /* ignore */
     }
   }, []);
+
+  // Export one result to the save folder — no dialog.
+  const saveItem = useCallback(async (item: QueueItem): Promise<void> => {
+    const folder = saveFolderRef.current;
+    if (!item.resultPath || !folder) return;
+    setSavingIds((prev) => new Set(prev).add(item.id));
+    try {
+      const dest = await saveToFolder(item.inputPath, item.resultPath, folder);
+      updateItem(item.id, { savedPath: dest });
+    } catch (e) {
+      alert(`Could not save: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  }, [updateItem]);
+
+  const saveAll = useCallback(async () => {
+    const pending = itemsRef.current.filter((i) => i.status === "done" && !i.savedPath);
+    for (const it of pending) await saveItem(it);
+  }, [saveItem]);
 
   const onReveal = useCallback((item: QueueItem) => {
     if (item.savedPath) void revealInFinder(item.savedPath);
@@ -169,9 +195,19 @@ export default function App() {
     setItems([]);
   }, []);
 
+  // After a touch-up: refresh the preview, and if the item was already exported,
+  // re-export so the saved file reflects the edit.
   const onEditorSaved = useCallback(
     (afterDataUrl: string) => {
-      if (editing) updateItem(editing.id, { after: afterDataUrl });
+      if (!editing) return;
+      updateItem(editing.id, { after: afterDataUrl });
+      const it = itemsRef.current.find((i) => i.id === editing.id);
+      const folder = saveFolderRef.current;
+      if (it?.savedPath && it.resultPath && folder) {
+        saveToFolder(it.inputPath, it.resultPath, folder)
+          .then((dest) => updateItem(it.id, { savedPath: dest }))
+          .catch(() => {});
+      }
     },
     [editing, updateItem],
   );
@@ -179,12 +215,15 @@ export default function App() {
   const stats = useMemo(() => {
     const total = items.length;
     const done = items.filter((i) => i.status === "done").length;
+    const saved = items.filter((i) => i.savedPath).length;
     const failed = items.filter((i) => i.status === "failed").length;
     const busy = items.filter((i) => i.status === "processing" || i.status === "queued").length;
-    return { total, done, failed, busy };
+    const unsaved = items.filter((i) => i.status === "done" && !i.savedPath).length;
+    return { total, done, saved, failed, busy, unsaved };
   }, [items]);
 
   const hasItems = items.length > 0;
+  const folderName = saveFolder ? basename(saveFolder) : "Pictures";
 
   return (
     <div className={`app${dragActive ? " drag-active" : ""}`}>
@@ -194,22 +233,11 @@ export default function App() {
           <span className="brand-name">Cutout</span>
         </div>
         <div className="titlebar-tools">
-          <div className="output-control">
-            <span className="output-label">Save to</span>
-            {outputFolder ? (
-              <span className="output-chip" title={outputFolder}>
-                {basename(outputFolder)}
-                <button className="chip-x" onClick={() => setOutputFolder(null)} title="Save beside originals instead">
-                  ✕
-                </button>
-              </span>
-            ) : (
-              <span className="output-chip output-chip-default">Beside each original</span>
-            )}
-            <button className="btn btn-small" onClick={chooseFolder}>
-              Choose Folder…
+          {stats.unsaved > 0 && (
+            <button className="btn btn-small" onClick={saveAll}>
+              Save all ({stats.unsaved})
             </button>
-          </div>
+          )}
           {hasItems && (
             <button className="btn btn-small btn-ghost" onClick={clearAll}>
               Clear
@@ -218,14 +246,46 @@ export default function App() {
           <button className="btn btn-small btn-primary" onClick={chooseImages}>
             Add Images
           </button>
+          <div className="settings-wrap">
+            <button
+              className="icon-btn"
+              onClick={() => setShowSettings((s) => !s)}
+              title="Settings"
+              aria-label="Settings"
+            >
+              ⚙
+            </button>
+            {showSettings && (
+              <>
+                <div className="popover-scrim" onClick={() => setShowSettings(false)} />
+                <div className="settings-pop">
+                  <div className="settings-title">Save location</div>
+                  <div className="settings-path" title={saveFolder ?? ""}>
+                    {saveFolder ?? "Pictures"}
+                  </div>
+                  <div className="settings-row">
+                    <button className="btn btn-small" onClick={changeFolder}>
+                      Change…
+                    </button>
+                    <button className="btn btn-small btn-ghost" onClick={resetToPictures}>
+                      Use Pictures
+                    </button>
+                  </div>
+                  <p className="settings-note">Save writes here as “name-nobg.png”, no prompt.</p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
       {hasItems && (
         <div className="statusbar">
-          <span>{stats.total} image{stats.total === 1 ? "" : "s"}</span>
+          <span>
+            {stats.total} image{stats.total === 1 ? "" : "s"}
+          </span>
           <span className="dot-sep">•</span>
-          <span>{stats.done} done</span>
+          <span>{stats.saved} saved</span>
           {stats.busy > 0 && (
             <>
               <span className="dot-sep">•</span>
@@ -238,6 +298,10 @@ export default function App() {
               <span className="status-failed">{stats.failed} failed</span>
             </>
           )}
+          <span className="statusbar-spacer" />
+          <span className="statusbar-dest" title={saveFolder ?? ""}>
+            Saving to {folderName}
+          </span>
         </div>
       )}
 
@@ -260,7 +324,8 @@ export default function App() {
               <QueueItemCard
                 key={item.id}
                 item={item}
-                onSaveAs={onSaveAs}
+                saving={savingIds.has(item.id)}
+                onSave={saveItem}
                 onReveal={onReveal}
                 onEdit={setEditing}
                 onRemove={onRemove}

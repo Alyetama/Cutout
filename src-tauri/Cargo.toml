@@ -1,6 +1,6 @@
 [package]
 name = "cutout"
-version = "1.0.2"
+version = "1.0.3"
 description = "On-device image background removal using Apple's Vision framework"
 authors = ["fcatus"]
 edition = "2021"

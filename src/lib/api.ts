@@ -8,14 +8,15 @@ export interface QueueItem {
   name: string;
   status: Status;
   error?: string;
-  savedPath?: string;
+  resultPath?: string; // temp working PNG (full-res)
+  savedPath?: string; // set once exported to the save folder
   before?: string; // data URL
   after?: string; // data URL
 }
 
 export interface ProcessResult {
   input_path: string;
-  saved_path: string;
+  result_path: string;
   before_preview: string;
   after_preview: string;
 }
@@ -54,25 +55,28 @@ export function stem(name: string): string {
   return dot > 0 ? name.slice(0, dot) : name;
 }
 
-export function processImage(
-  inputPath: string,
-  outputDir: string | null,
-): Promise<ProcessResult> {
-  return invoke<ProcessResult>("process_image", {
-    inputPath,
-    outputDir: outputDir ?? null,
-  });
+export function processImage(inputPath: string): Promise<ProcessResult> {
+  return invoke<ProcessResult>("process_image", { inputPath });
 }
 
 export function prepareEdit(
   inputPath: string,
-  savedPath: string,
+  resultPath: string,
 ): Promise<EditSources> {
-  return invoke<EditSources>("prepare_edit", { inputPath, savedPath });
+  return invoke<EditSources>("prepare_edit", { inputPath, resultPath });
 }
 
-export function saveAs(srcPath: string, destPath: string): Promise<void> {
-  return invoke("save_as", { srcPath, destPath });
+export function picturesDir(): Promise<string> {
+  return invoke<string>("pictures_dir");
+}
+
+/** Export a result into `destDir` as `<stem>-nobg.png` with no dialog; returns the saved path. */
+export function saveToFolder(
+  inputPath: string,
+  resultPath: string,
+  destDir: string,
+): Promise<string> {
+  return invoke<string>("save_to_folder", { inputPath, resultPath, destDir });
 }
 
 export function savePngBytes(destPath: string, dataBase64: string): Promise<void> {

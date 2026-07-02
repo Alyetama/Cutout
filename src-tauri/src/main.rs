@@ -16,8 +16,9 @@ use tauri::{AppHandle, Manager};
 #[derive(Serialize)]
 struct ProcessResult {
     input_path: String,
-    /// Full-resolution transparent PNG written to disk (the final output).
-    saved_path: String,
+    /// Full-resolution transparent PNG in a temp working file. It is exported to
+    /// the user's save folder only when they press Save.
+    result_path: String,
     /// Small data-URL preview of the original (for the queue card).
     before_preview: String,
     /// Small data-URL preview of the cut-out result (for the queue card).
@@ -171,23 +172,17 @@ fn read_as_data_url(path: &Path) -> Result<String, String> {
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-async fn process_image(
-    app: AppHandle,
-    input_path: String,
-    output_dir: Option<String>,
-) -> Result<ProcessResult, String> {
+async fn process_image(app: AppHandle, input_path: String) -> Result<ProcessResult, String> {
     // Everything below is blocking (subprocess + file IO); keep it off the
     // async runtime's worker so a big batch never freezes the UI.
     tauri::async_runtime::spawn_blocking(move || {
-        let saved = reserve_output_path(&input_path, output_dir.as_deref())?;
-        if let Some(parent) = saved.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Could not create output folder: {e}"))?;
-        }
-        let saved_str = saved.to_string_lossy().to_string();
+        // The cut-out goes to a temp working file; it's exported to the save
+        // folder only when the user presses Save.
+        let result = unique_temp("png")?;
+        let result_str = result.to_string_lossy().to_string();
 
         // 1. The actual background removal (full resolution).
-        run_helper(&app, &["remove", &input_path, &saved_str])?;
+        run_helper(&app, &["remove", &input_path, &result_str])?;
 
         // 2. Small previews for the queue card (before + after).
         let before_small = unique_temp("png")?;
@@ -205,7 +200,7 @@ async fn process_image(
             &app,
             &[
                 "topng",
-                &saved_str,
+                &result_str,
                 &after_small.to_string_lossy(),
                 &PREVIEW_MAX_DIM.to_string(),
             ],
@@ -219,7 +214,7 @@ async fn process_image(
 
         Ok(ProcessResult {
             input_path,
-            saved_path: saved_str,
+            result_path: result_str,
             before_preview: before_res?,
             after_preview: after_res?,
         })
@@ -228,30 +223,51 @@ async fn process_image(
     .map_err(|e| format!("Processing task failed: {e}"))?
 }
 
+/// The user's Pictures folder — the default save location.
+#[tauri::command]
+fn pictures_dir(app: AppHandle) -> Result<String, String> {
+    app.path()
+        .picture_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| format!("Could not locate the Pictures folder: {e}"))
+}
+
+/// Export a processed result into `dest_dir` as `<stem>-nobg.png`, no dialog.
+/// Returns the final path. Names are kept unique per input so distinct images
+/// sharing a stem don't overwrite each other; re-saving the same input reuses
+/// its file.
+#[tauri::command]
+fn save_to_folder(
+    input_path: String,
+    result_path: String,
+    dest_dir: String,
+) -> Result<String, String> {
+    let dest = reserve_output_path(&input_path, Some(&dest_dir))?;
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Could not create the save folder: {e}"))?;
+    }
+    std::fs::copy(&result_path, &dest).map_err(|e| format!("Could not save file: {e}"))?;
+    Ok(dest.to_string_lossy().to_string())
+}
+
 /// Prepare full-resolution sources for the touch-up editor as data URLs.
 #[tauri::command]
 async fn prepare_edit(
     app: AppHandle,
     input_path: String,
-    saved_path: String,
+    result_path: String,
 ) -> Result<EditSources, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let original_png = unique_temp("png")?;
         run_helper(&app, &["topng", &input_path, &original_png.to_string_lossy()])?;
         let original = read_as_data_url(&original_png)?;
         let _ = std::fs::remove_file(&original_png);
-        let result = read_as_data_url(Path::new(&saved_path))?;
+        let result = read_as_data_url(Path::new(&result_path))?;
         Ok(EditSources { original, result })
     })
     .await
     .map_err(|e| format!("Editor prep failed: {e}"))?
-}
-
-/// Copy an already-produced result to a user-chosen location ("Save As…").
-#[tauri::command]
-fn save_as(src_path: String, dest_path: String) -> Result<(), String> {
-    std::fs::copy(&src_path, &dest_path).map_err(|e| format!("Could not save file: {e}"))?;
-    Ok(())
 }
 
 /// Write raw PNG bytes (base64, possibly a data URL) to disk — used by the
@@ -285,7 +301,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             process_image,
             prepare_edit,
-            save_as,
+            pictures_dir,
+            save_to_folder,
             save_png_bytes,
             reveal_in_finder,
         ])

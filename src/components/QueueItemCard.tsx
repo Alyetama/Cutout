@@ -3,7 +3,8 @@ import type { QueueItem } from "../lib/api";
 
 interface Props {
   item: QueueItem;
-  onSaveAs: (item: QueueItem) => void;
+  saving: boolean;
+  onSave: (item: QueueItem) => void;
   onReveal: (item: QueueItem) => void;
   onEdit: (item: QueueItem) => void;
   onRemove: (item: QueueItem) => void;
@@ -19,12 +20,14 @@ const STATUS_LABEL: Record<QueueItem["status"], string> = {
 
 export function QueueItemCard({
   item,
-  onSaveAs,
+  saving,
+  onSave,
   onReveal,
   onEdit,
   onRemove,
   onRetry,
 }: Props) {
+  const saved = Boolean(item.savedPath);
   return (
     <div className={`card card-${item.status}`}>
       <div className="card-media">
@@ -44,33 +47,36 @@ export function QueueItemCard({
           <span className="card-name" title={item.inputPath}>
             {item.name}
           </span>
-          <span className={`badge badge-${item.status}`}>
-            {STATUS_LABEL[item.status]}
-          </span>
+          <span className={`badge badge-${item.status}`}>{STATUS_LABEL[item.status]}</span>
         </div>
 
-        {item.status === "failed" && (
-          <div className="card-error">{item.error}</div>
-        )}
+        {item.status === "failed" && <div className="card-error">{item.error}</div>}
 
-        {item.status === "done" && item.savedPath && (
-          <div className="card-path" title={item.savedPath}>
-            Saved to {item.savedPath}
-          </div>
-        )}
+        {item.status === "done" &&
+          (saved ? (
+            <div className="card-path" title={item.savedPath}>
+              Saved to {item.savedPath}
+            </div>
+          ) : (
+            <div className="card-hint">Background removed — press Save</div>
+          ))}
 
         <div className="card-actions">
           {item.status === "done" && (
             <>
+              {!saved && (
+                <button className="btn btn-primary" onClick={() => onSave(item)} disabled={saving}>
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              )}
               <button className="btn" onClick={() => onEdit(item)}>
                 Touch&nbsp;up…
               </button>
-              <button className="btn" onClick={() => onSaveAs(item)}>
-                Save&nbsp;As…
-              </button>
-              <button className="btn" onClick={() => onReveal(item)}>
-                Show&nbsp;in&nbsp;Finder
-              </button>
+              {saved && (
+                <button className="btn" onClick={() => onReveal(item)}>
+                  Show&nbsp;in&nbsp;Finder
+                </button>
+              )}
             </>
           )}
           {item.status === "failed" && (

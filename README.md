@@ -20,7 +20,7 @@ Requires **macOS 14 (Sonoma) or later**.
 - **Batch processing** with a live queue and per-image status.
 - **Before / after** slider for every result, over a transparency checkerboard.
 - Wide input support: **JPEG, PNG, HEIC/HEIF, TIFF, WebP, BMP, GIF**.
-- Saves a **transparent PNG** next to the original (`photo.jpg → photo-nobg.png`) or into a folder you choose.
+- One-click **Save** writes a **transparent PNG** (`photo.jpg → photo-nobg.png`) straight to your **Pictures** folder — no dialog. Change the destination anytime in Settings, or **Save all** at once.
 - **Touch-up brush** to erase or restore areas and refine the automatic mask.
 
 ## First launch

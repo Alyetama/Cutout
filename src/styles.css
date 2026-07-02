@@ -617,3 +617,56 @@ body {
   border-top: 1px solid var(--border);
   text-align: center;
 }
+
+/* ---------- Settings popover + gear ---------- */
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.icon-btn:hover { background: var(--bg-sunken); }
+.settings-wrap { position: relative; -webkit-app-region: no-drag; }
+.popover-scrim { position: fixed; inset: 0; z-index: 40; }
+.settings-pop {
+  position: absolute;
+  top: 38px;
+  right: 0;
+  z-index: 41;
+  width: 300px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+.settings-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-dim); margin-bottom: 6px; }
+.settings-path {
+  font-size: 12.5px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+.settings-row { display: flex; gap: 8px; margin-top: 10px; }
+.settings-note { font-size: 11.5px; color: var(--text-dim); margin: 10px 0 0; line-height: 1.4; }
+
+/* ---------- Card hint (unsaved) ---------- */
+.card-hint { font-size: 11.5px; color: var(--text-dim); }
+
+/* ---------- Status bar destination ---------- */
+.statusbar-spacer { flex: 1; }
+.statusbar-dest { color: var(--text-dim); font-size: 11.5px; }

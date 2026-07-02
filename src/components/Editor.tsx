@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { prepareEdit, savePngBytes, stem, type QueueItem } from "../lib/api";
+import { prepareEdit, savePngBytes, type QueueItem } from "../lib/api";
 
 interface Props {
   item: QueueItem;
@@ -45,7 +44,7 @@ export function Editor({ item, onClose, onSaved }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const sources = await prepareEdit(item.inputPath, item.savedPath!);
+        const sources = await prepareEdit(item.inputPath, item.resultPath!);
         const [resultImg, origImg] = await Promise.all([
           loadImage(sources.result),
           loadImage(sources.original),
@@ -196,28 +195,9 @@ export function Editor({ item, onClose, onSaved }: Props) {
     try {
       setBusy(true);
       const dataUrl = workRef.current!.toDataURL("image/png");
-      await savePngBytes(item.savedPath!, dataUrl);
-      onSaved(dataUrl);
-      onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveCopy() {
-    const dest = await saveDialog({
-      defaultPath: `${stem(item.name)}-nobg.png`,
-      filters: [{ name: "PNG image", extensions: ["png"] }],
-    });
-    if (!dest) return;
-    setBusy(true);
-    try {
-      const dataUrl = workRef.current!.toDataURL("image/png");
-      // Write the edit to the chosen path and keep the working file in sync.
-      await savePngBytes(dest, dataUrl);
-      await savePngBytes(item.savedPath!, dataUrl);
+      // Persist the edit into the working result file; App re-exports it if the
+      // item was already saved.
+      await savePngBytes(item.resultPath!, dataUrl);
       onSaved(dataUrl);
       onClose();
     } catch (e) {
@@ -256,11 +236,8 @@ export function Editor({ item, onClose, onSaved }: Props) {
           <button className="btn" onClick={reset} disabled={loading}>
             Reset
           </button>
-          <button className="btn" onClick={saveCopy} disabled={loading || busy}>
-            Save As…
-          </button>
           <button className="btn btn-primary" onClick={() => commit()} disabled={loading || busy || !dirty}>
-            {busy ? "Saving…" : "Save"}
+            {busy ? "Applying…" : "Apply"}
           </button>
           <button className="btn btn-ghost" onClick={onClose} disabled={busy}>
             Close
