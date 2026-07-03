@@ -70,7 +70,7 @@ export function QueueItemCard({
                 </button>
               )}
               <button className="btn" onClick={() => onEdit(item)}>
-                Touch&nbsp;up…
+                Edit…
               </button>
               {saved && (
                 <button className="btn" onClick={() => onReveal(item)}>

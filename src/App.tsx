@@ -198,9 +198,12 @@ export default function App() {
   // After a touch-up: refresh the preview, and if the item was already exported,
   // re-export so the saved file reflects the edit.
   const onEditorSaved = useCallback(
-    (afterDataUrl: string) => {
+    (afterDataUrl: string, beforeDataUrl?: string) => {
       if (!editing) return;
-      updateItem(editing.id, { after: afterDataUrl });
+      updateItem(
+        editing.id,
+        beforeDataUrl ? { after: afterDataUrl, before: beforeDataUrl } : { after: afterDataUrl },
+      );
       const it = itemsRef.current.find((i) => i.id === editing.id);
       const folder = saveFolderRef.current;
       if (it?.savedPath && it.resultPath && folder) {

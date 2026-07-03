@@ -670,3 +670,40 @@ body {
 /* ---------- Status bar destination ---------- */
 .statusbar-spacer { flex: 1; }
 .statusbar-dest { color: var(--text-dim); font-size: 11.5px; }
+
+/* ---------- Crop tool ---------- */
+.crop-actions { display: flex; gap: 8px; align-items: center; }
+.editor-checker { overflow: hidden; } /* clip the crop dimming shadow to the image */
+.editor-canvas.cursor-crop { cursor: crosshair; }
+.crop-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  touch-action: none;
+}
+.crop-rect {
+  position: absolute;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  pointer-events: none;
+}
+.crop-move { position: absolute; inset: 0; pointer-events: auto; cursor: move; }
+.crop-h {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 3px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.crop-h-nw { left: 0; top: 0; cursor: nwse-resize; }
+.crop-h-n  { left: 50%; top: 0; cursor: ns-resize; }
+.crop-h-ne { left: 100%; top: 0; cursor: nesw-resize; }
+.crop-h-e  { left: 100%; top: 50%; cursor: ew-resize; }
+.crop-h-se { left: 100%; top: 100%; cursor: nwse-resize; }
+.crop-h-s  { left: 50%; top: 100%; cursor: ns-resize; }
+.crop-h-sw { left: 0; top: 100%; cursor: nesw-resize; }
+.crop-h-w  { left: 0; top: 50%; cursor: ew-resize; }
