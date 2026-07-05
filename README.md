@@ -32,7 +32,7 @@ blocks it on first launch. Any one of these opens it (you only need to do this o
 2. If that's blocked on newer macOS: open **System Settings → Privacy & Security**, scroll down, and click **"Open Anyway"**.
 3. Or, from Terminal:
    ```bash
-   xattr -dr com.apple.quarantine /Applications/Cutout.app
+   /usr/bin/xattr -dr com.apple.quarantine /Applications/Cutout.app
    ```
 
 ## Build from source
