@@ -24,3 +24,6 @@ DerivedData/
 
 # Claude Code local config
 .claude/
+
+# Local Git worktrees
+.worktrees/
