@@ -358,23 +358,29 @@ export default function App() {
 function Logo({ large }: { large?: boolean }) {
   const s = large ? 72 : 26;
   return (
-    <svg width={s} height={s} viewBox="0 0 100 100" fill="none" aria-hidden>
+    <svg width={s} height={s} viewBox="0 0 100 100" aria-hidden>
       <defs>
-        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#6ea8ff" />
-          <stop offset="1" stopColor="#a06bff" />
+        <linearGradient id="logo-background" x1="16" y1="11" x2="84" y2="90" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#262A58" />
+          <stop offset="1" stopColor="#181B36" />
         </linearGradient>
+        <linearGradient id="logo-accent" x1="32" y1="26" x2="72" y2="73" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#A78BFA" />
+          <stop offset="1" stopColor="#7C5CFC" />
+        </linearGradient>
+        <pattern id="logo-checker" width="12" height="12" patternUnits="userSpaceOnUse">
+          <rect width="12" height="12" fill="#F7F7FF" />
+          <path d="M0 0H6V6H0ZM6 6H12V12H6Z" fill="#D9DBEE" />
+        </pattern>
+        <clipPath id="logo-disc"><circle cx="50" cy="50" r="29.7" /></clipPath>
       </defs>
-      <rect x="6" y="6" width="88" height="88" rx="22" fill="url(#lg)" />
-      <path
-        d="M30 66c6-18 12-30 20-30s10 8 18 8"
-        stroke="#fff"
-        strokeWidth="6"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.95"
-      />
-      <circle cx="63" cy="40" r="7" fill="#fff" />
+      <rect x="7" y="7" width="86" height="86" rx="20.3" fill="url(#logo-background)" />
+      <circle cx="50" cy="50" r="32" fill="url(#logo-accent)" />
+      <circle cx="50" cy="50" r="29.7" fill="url(#logo-checker)" />
+      <g clipPath="url(#logo-disc)">
+        <circle cx="50" cy="41" r="10.9" fill="#FFF" />
+        <path d="M24.4 79.7C26.4 62.6 37.1 54.3 50 54.3C62.9 54.3 73.6 62.6 75.6 79.7H24.4Z" fill="#FFF" />
+      </g>
     </svg>
   );
 }
