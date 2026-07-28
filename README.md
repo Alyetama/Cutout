@@ -22,6 +22,7 @@ Requires **macOS 14 (Sonoma) or later**.
 - Wide input support: **JPEG, PNG, HEIC/HEIF, TIFF, WebP, BMP, GIF**.
 - One-click **Save** writes a **transparent PNG** (`photo.jpg → photo-nobg.png`) straight to your **Pictures** folder — no dialog. Change the destination anytime in Settings, or **Save all** at once.
 - **Touch-up brush** to erase or restore areas and refine the automatic mask.
+- **Crop tool** — drag a selection with handles and crop the result at full resolution.
 
 ## First launch
 
